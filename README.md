@@ -41,9 +41,9 @@ Instead of treating AI as a simple autocomplete helper, AegisAgent demonstrates 
 * **npm** (v9.0.0 or higher)
 
 ### Setup Steps
-1. Navigate to the project root directory:
+1. Navigate to the project directory:
    ```bash
-   cd "/media/anshu/Apun Ka Disk/Projects/new"
+   cd AegisAgent
    ```
 2. Install the project dependencies:
    ```bash
