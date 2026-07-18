@@ -90,7 +90,7 @@ export default function App() {
           'src/index.js': generatedFiles['src/index.js'],
           'tests/index.test.js': generatedFiles['tests/index.test.js'],
           'logs/mcp-trace.json': JSON.stringify({
-            engine: 'Gemini-2.5-Flash',
+            engine: 'Gemini-3.5-Flash',
             timestamp: new Date().toISOString(),
             toolCalls: [
               { tool: 'read_spec', args: { path: 'spec.md' } },
