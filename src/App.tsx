@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { 
-  Play, 
-  RefreshCw, 
-  Settings, 
-  Terminal, 
-  ShieldCheck, 
-  MessageSquare, 
+import {
+  Play,
+  RefreshCw,
+  Settings,
+  Terminal,
+  ShieldCheck,
+  MessageSquare,
   Info
 } from 'lucide-react';
 import { scenarios } from './services/mockData';
@@ -26,11 +26,11 @@ export default function App() {
   const [currentStage, setCurrentStage] = useState<'idle' | 'architect' | 'developer' | 'tester' | 'executor' | 'validator' | 'complete'>('idle');
   const [isWorkflowRunning, setIsWorkflowRunning] = useState(false);
   const [activeTab, setActiveTab] = useState<'validator' | 'chat' | 'console'>('console');
-  
+
   // Settings & Keys
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('aegisagent_gemini_key') || '');
   const [showSettings, setShowSettings] = useState(false);
-  
+
   // Exec logs & Validation
   const [consoleLogs, setConsoleLogs] = useState<{ time: string; stage: string; msg: string; details?: string }[]>([]);
   const [report, setReport] = useState<ValidationReport | null>(null);
@@ -60,7 +60,7 @@ export default function App() {
 
     // 1. Initial State
     setConsoleLogs(prev => [
-      ...prev, 
+      ...prev,
       { time: new Date().toLocaleTimeString(), stage: 'System', msg: `Initializing generation context in ${apiKey ? 'Live Gemini mode' : 'Demo mode'}...` }
     ]);
 
@@ -68,17 +68,17 @@ export default function App() {
       // LIVE GEMINI PIPELINE
       try {
         const generatedFiles = await runLiveAgentWorkflow(
-          apiKey, 
-          selectedScenario.spec, 
+          apiKey,
+          workspaceFiles['spec.md'] || selectedScenario.spec,
           (log) => {
             setCurrentStage(log.stage);
             setConsoleLogs(prev => [
               ...prev,
-              { 
-                time: new Date().toLocaleTimeString(), 
-                stage: log.stage.toUpperCase(), 
-                msg: log.message, 
-                details: log.details 
+              {
+                time: new Date().toLocaleTimeString(),
+                stage: log.stage.toUpperCase(),
+                msg: log.message,
+                details: log.details
               }
             ]);
           }
@@ -86,7 +86,7 @@ export default function App() {
 
         // Update files in workspace
         const finalFiles = {
-          'spec.md': selectedScenario.spec,
+          'spec.md': workspaceFiles['spec.md'] || selectedScenario.spec,
           'src/index.js': generatedFiles['src/index.js'],
           'tests/index.test.js': generatedFiles['tests/index.test.js'],
           'logs/mcp-trace.json': JSON.stringify({
@@ -109,7 +109,7 @@ export default function App() {
         await new Promise(r => setTimeout(r, 600));
 
         const evaluation = runSandbox(finalFiles['src/index.js'], finalFiles['tests/index.test.js'], selectedScenario.checklist);
-        
+
         setCurrentStage('validator');
         setConsoleLogs(prev => [...prev, { time: new Date().toLocaleTimeString(), stage: 'VALIDATOR', msg: 'Running static inspections and compliance score calculation...' }]);
         await new Promise(r => setTimeout(r, 600));
@@ -128,16 +128,30 @@ export default function App() {
     } else {
       // MOCK PIPELINE
       try {
+        if (selectedScenario.id === 'custom-spec') {
+          setConsoleLogs(prev => [
+            ...prev,
+            { 
+              time: new Date().toLocaleTimeString(), 
+              stage: 'SYSTEM', 
+              msg: 'Error: Custom Target Spec cannot run in Showcase (Mock) Mode.', 
+              details: 'Please add your Google Gemini API Key in the settings dialog (⚙ top-right) and run a live workflow to generate custom implementations!' 
+            }
+          ]);
+          setIsWorkflowRunning(false);
+          return;
+        }
+
         const demoStages = selectedScenario.logs;
         for (const item of demoStages) {
           setCurrentStage(item.stage);
           setConsoleLogs(prev => [
             ...prev,
-            { 
-              time: item.timestamp || new Date().toLocaleTimeString(), 
-              stage: item.stage.toUpperCase(), 
-              msg: item.message, 
-              details: item.details 
+            {
+              time: item.timestamp || new Date().toLocaleTimeString(),
+              stage: item.stage.toUpperCase(),
+              msg: item.message,
+              details: item.details
             }
           ]);
 
@@ -173,8 +187,8 @@ export default function App() {
 
         // Run validation sandbox locally
         const evaluation = runSandbox(
-          selectedScenario.files['src/index.js'], 
-          selectedScenario.files['tests/index.test.js'], 
+          selectedScenario.files['src/index.js'],
+          selectedScenario.files['tests/index.test.js'],
           selectedScenario.checklist
         );
 
@@ -191,13 +205,13 @@ export default function App() {
 
   // Re-run sandbox when the developer edits files manually
   const runCustomTests = () => {
-    if (!workspaceFiles['src/index.js'] || !workspaceFiles['tests/index.test.js']) return;
-    
+    if (workspaceFiles['src/index.js'] === undefined || workspaceFiles['tests/index.test.js'] === undefined) return;
+
     setConsoleLogs(prev => [
       ...prev,
       { time: new Date().toLocaleTimeString(), stage: 'MANUAL', msg: 'Developer triggered code rebuild. Re-executing assertions...' }
     ]);
-    
+
     const evaluation = runSandbox(
       workspaceFiles['src/index.js'],
       workspaceFiles['tests/index.test.js'],
@@ -285,7 +299,7 @@ export default function App() {
           </div>
 
           {/* Generate Agent Pipeline */}
-          <button 
+          <button
             className="btn btn-primary"
             onClick={runWorkflow}
             disabled={isWorkflowRunning}
@@ -295,7 +309,7 @@ export default function App() {
           </button>
 
           {/* Re-run Local Tests */}
-          <button 
+          <button
             className="btn"
             onClick={runCustomTests}
             disabled={isWorkflowRunning || !workspaceFiles['src/index.js']}
@@ -305,8 +319,8 @@ export default function App() {
           </button>
 
           {/* Config Settings */}
-          <button 
-            className="btn" 
+          <button
+            className="btn"
             style={{ padding: '8px' }}
             onClick={() => setShowSettings(true)}
           >
@@ -336,10 +350,10 @@ export default function App() {
         }}>
           {/* File Browser Sidebar */}
           <div className="glass-panel" style={{ overflow: 'hidden' }}>
-            <FileExplorer 
-              files={workspaceFiles} 
-              selectedFile={selectedFile} 
-              onSelectFile={(f) => setSelectedFile(f)} 
+            <FileExplorer
+              files={workspaceFiles}
+              selectedFile={selectedFile}
+              onSelectFile={(f) => setSelectedFile(f)}
             />
           </div>
 
@@ -355,7 +369,11 @@ export default function App() {
                 }));
               }}
               onSave={runCustomTests}
-              readOnly={selectedFile === 'spec.md' || selectedFile.endsWith('.json') || isWorkflowRunning}
+              readOnly={
+                selectedFile.endsWith('.json') || 
+                isWorkflowRunning || 
+                (selectedFile === 'spec.md' && selectedScenario.id !== 'custom-spec')
+              }
             />
           </div>
 
@@ -372,7 +390,7 @@ export default function App() {
               borderBottom: '1px solid var(--border-color)',
               height: '40px'
             }}>
-              <button 
+              <button
                 onClick={() => setActiveTab('console')}
                 style={{
                   flex: 1,
@@ -392,7 +410,7 @@ export default function App() {
                 <Terminal size={12} />
                 Agent Console
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab('validator')}
                 style={{
                   flex: 1,
@@ -412,7 +430,7 @@ export default function App() {
                 <ShieldCheck size={12} />
                 Validation Gate
               </button>
-              <button 
+              <button
                 onClick={() => setActiveTab('chat')}
                 style={{
                   flex: 1,
@@ -466,17 +484,17 @@ export default function App() {
                       <div key={index} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)', paddingBottom: '8px' }}>
                         <div style={{ display: 'flex', gap: '8px', color: 'var(--text-muted)', marginBottom: '4px' }}>
                           <span>[{log.time}]</span>
-                          <span style={{ 
-                            color: log.stage === 'SYSTEM' || log.stage === 'System' 
-                              ? 'var(--info)' 
-                              : log.stage === 'ARCHITECT' 
-                                ? 'var(--primary)' 
-                                : log.stage === 'DEVELOPER' 
-                                  ? 'var(--purple)' 
-                                  : log.stage === 'TESTER' 
-                                    ? 'var(--warning)' 
-                                    : 'var(--success)', 
-                            fontWeight: 700 
+                          <span style={{
+                            color: log.stage === 'SYSTEM' || log.stage === 'System'
+                              ? 'var(--info)'
+                              : log.stage === 'ARCHITECT'
+                                ? 'var(--primary)'
+                                : log.stage === 'DEVELOPER'
+                                  ? 'var(--purple)'
+                                  : log.stage === 'TESTER'
+                                    ? 'var(--warning)'
+                                    : 'var(--success)',
+                            fontWeight: 700
                           }}>
                             {log.stage}
                           </span>
@@ -545,7 +563,7 @@ export default function App() {
             gap: '16px'
           }}>
             <h3 style={{ fontSize: '16px', fontWeight: 700 }}>Orchestrator Settings</h3>
-            
+
             <div style={{
               padding: '12px',
               background: 'rgba(59, 130, 246, 0.05)',
@@ -583,13 +601,13 @@ export default function App() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
-              <button 
-                className="btn" 
+              <button
+                className="btn"
                 onClick={() => setShowSettings(false)}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 className="btn btn-primary"
                 onClick={() => {
                   const input = document.getElementById('apiKeyInput') as HTMLInputElement;
